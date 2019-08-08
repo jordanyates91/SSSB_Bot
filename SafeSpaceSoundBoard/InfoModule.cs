@@ -16,6 +16,8 @@ namespace SafeSpaceSoundBoard
 {
     public class InfoModule : ModuleBase<SocketCommandContext>
     {
+        private static IVoiceChannel voiceChannel;
+
         [Command("help")]
         public async Task Help()
         {
@@ -23,20 +25,8 @@ namespace SafeSpaceSoundBoard
             var embed = new EmbedBuilder();
             string message =
             "The following commands are supported and explained below:\n\n" +
-
-            "!play <@user> <time-out>: This command is used to initiate a game.\n" +
-            "If an opponent is not specified with <@user> then the game will default to you playing against the bot.\n" +
-            "If a <time-out> of no greater than 24 hours is specied that will be the time before the game completes, " +
-            "if not specified it will default to 15 seconds.\n" +
-            "Timeout expects values in this format: HH:MM:SS\n\n" +
-
-            "!record <@user1> <@user2>: This command will return a record of wins/losses/ties for <@user1>.\n" +
-            "If <@user2> is specified it will show the wins/losses/ties between <@user1> and <@user2>.\n" +
-            "If @user2 is not specified it will show wins/losses/ties between <@user1> and the bot.\n\n" +
-
-            "!time-left: This command will display how much time is remaining in the game before it ends.\n\n" +
-
-            "!forfiet: This command will cause you to forfiet an ongoing game you are playing.\n\n";
+            "!join: This command will cause the bot to join the audio channel you're currently connected to.\n" +
+            "!play sound: This command will cause the bot to play a sound in the channel it's connected to.\n";
 
             embed.WithTitle("Help Message");
             embed.WithDescription(message);
@@ -53,13 +43,15 @@ namespace SafeSpaceSoundBoard
             // Get the audio channel
             channel = channel ?? (Context.User as IGuildUser)?.VoiceChannel;
             if (channel == null) { await Context.Channel.SendMessageAsync("User must be in a voice channel, or a voice channel must be passed as an argument."); return; }
+            if (voiceChannel == null)
+            {
+                voiceChannel = channel;
+            }
 
             // For the next step with transmitting audio, you would want to pass this Audio Client in to a service.
             var audioClient = await channel.ConnectAsync();
-
-            string path = Path.Combine(Environment.CurrentDirectory, @"Audio\", "finalfantasyvictory.mp3");
-
-            await SendAsync(audioClient, path);
+            //string path = Path.Combine(Environment.CurrentDirectory, @"Audio\", "finalfantasyvictory.mp3");
+            //await SendAsync(audioClient, path);
         }
 
         private Process CreateStream(string path)
@@ -86,6 +78,25 @@ namespace SafeSpaceSoundBoard
             }
         }
 
+        [Command("play", RunMode = RunMode.Async)]
+        public async Task PlaySound([Remainder] string args = "")
+        {
+
+            if (voiceChannel == null) { await Context.Channel.SendMessageAsync("Bot must be in a voice channel, try !join"); return; }
+
+            // For the next step with transmitting audio, you would want to pass this Audio Client in to a service.
+            var audioClient = await voiceChannel.ConnectAsync();
+            
+            var arguments = args.Split(' ');
+            var soundbite = arguments.ElementAt(0);
+
+            //TODO set up dictionary of keywords and soundfiles.
+            //until then just take the name of the sound as the input.
+            //soundbite should be "finalfantasyvictory.mp3"
+            string path = Path.Combine(Environment.CurrentDirectory, @"Audio\", soundbite);            
+
+            await SendAsync(audioClient, path);
+        }
     }
 }
 
